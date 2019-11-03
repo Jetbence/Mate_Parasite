@@ -76,6 +76,7 @@ static SystemState_t SystemState;
 static volatile uint16_t ADC_Results[5];
 static volatile uint16_t ADC_Filtered_Results[5];
 uint8_t ChargerCheck_Bit = 0;
+uint8_t Charging_Enabled = 0;
 uint16_t VBAT_Blanking = 0;
 uint16_t VCHG_Blanking = 0;
 uint32_t Tick_Main = 0;
@@ -136,6 +137,7 @@ uint16_t BatteryPack_Temperature_Filtered(void);
 uint16_t BatteryPack_Temperature_Filtered_Result(void);
 uint16_t ChargerVoltage_Filtered(void);
 uint16_t ChargerVoltage_Filtered_Result(void);
+uint8_t KeepAliveConditions(void);
 
 
 /* USER CODE BEGIN PFP */
@@ -194,6 +196,8 @@ int main(void)
 	LPF32_Init (&BatteryPack_Temperature__Filtered, 0, 1);
 	LPF32_Init (&ChargerVoltage__Filtered, 0, 3);	
 
+	BQ_EN_OFF;
+	ADC_V_EN_ON;
 
 	SystemState = SystemState_WakeUp;
 
@@ -242,12 +246,39 @@ void Switch_ADC_UpdateTask(void)
 	LPF32(&BatteryPack_Current__Filtered, BatteryPack_Current());
 	LPF32(&BatteryPack_Temperature__Filtered, BatteryPack_Temperature());
 	LPF32(&ChargerVoltage__Filtered, ChargerVoltage());
-	if (SystemState != SystemState_Charging)
+	
+	if (Tick_Main)
 	{
-		if(Charger_Tick > 100)
+		Tick_Main = 0;
+
+		if (SystemState != SystemState_Charging)
 		{
-			Charger_Tick = 0;
-			if (VOLTTODIGIT_CHG(0.2) < ChargerVoltage()) SystemState = SystemState_Charging;
+			if (VOLTTODIGIT_CHG(0.2) < ChargerVoltage())
+			{
+				if (VCHG_Blanking) VCHG_Blanking--;
+				else 
+				{
+					SHOLD_ON;
+					Charging_Enabled = 1;
+					SystemState = SystemState_NormalOperation;
+				}
+			}
+			else VCHG_Blanking = 50;
+		}
+		
+		if (SystemState != SystemState_Battery_Low)
+		{
+			if (VOLTTODIGIT_BAT(BATTERY_LOW_VOLTAGE) > Battery_Voltage())
+			{
+				if (VBAT_Blanking) VBAT_Blanking--;
+				else SystemState = SystemState_Battery_Low;			
+			}
+			else VBAT_Blanking = 50;	
+		}
+		
+		if (SystemState != SystemState_WakeUp)
+		{
+			if (KeepAliveConditions() == 0) SystemState = SystemState_ToolOff;
 		}
 	}
 }
@@ -256,73 +287,59 @@ void Switch_ADC_UpdateTask(void)
 
 void SystemUpdateTask(void)
 {	
-	if (Tick_Main > 100)
-	{
-		Tick_Main = 0;
-		
-		if (VOLTTODIGIT_BAT(BATTERY_LOW_VOLTAGE) > Battery_Voltage())
-		{
-			if (VBAT_Blanking) VBAT_Blanking--;
-			else SystemState = SystemState_Battery_Low;			
-		}
-		else VBAT_Blanking = 50;
-	}
+
 	
 }
 
 	
 void WakeUp(void)
 {
-	BQ_EN_OFF;
-	ADC_V_EN_ON;
- 
-	if (SMSWState() == 1 || VOLTTODIGIT_CHG(0.2) < ChargerVoltage())		
+	if (SMSWState() == 1)		
 	{	
-		SHOLD_ON;	
-		LED_YELLOW_ON;
+		SHOLD_ON;
 		Mem_Write();
 		HAL_I2C_Mem_Write(&hi2c1, PCF8563_ADDRESS, 0x02, I2C_MEMADD_SIZE_8BIT, &PCF8563_Write.RTCData[0], 8, 50);
 		SystemState = SystemState_NormalOperation;
-	}	 
+	}
 }
 	
 	
 void Charging_Control(void)
 {
-	if (VOLTTODIGIT_CHG(5.5)> ChargerVoltage() && VOLTTODIGIT_CHG(4.5) < ChargerVoltage())
+	if (Charger_Tick)
 	{
-		BQ_EN_ON;
-		SHOLD_OFF;
-		HAL_Delay(200);		
-		if (!BQCHG) 
+		if (Charging_Enabled == 1)
+		{
+			if (VOLTTODIGIT_CHG(5.5)> ChargerVoltage() && VOLTTODIGIT_CHG(4.5) < ChargerVoltage())
 			{
-				LED_YELLOW_OFF;
-				LED_RED_OFF;
-				LED_GREEN_TOGGLE;
-				HAL_Delay(500);
+				BQ_EN_ON;
+				HAL_Delay(200);		
+				if (!BQCHG) 
+					{
+						LED_YELLOW_OFF;
+						LED_RED_OFF;
+						LED_GREEN_TOGGLE;
+						HAL_Delay(500);
+					}
+					else
+					{
+						LED_GREEN_ON;
+						BQ_EN_OFF;
+						SystemState = SystemState_ToolOff; 
+					}
+				
 			}
-			else
-			{
-				LED_GREEN_ON;
-				BQ_EN_OFF;
-				SystemState = SystemState_ToolOff; 
+			else if (VOLTTODIGIT_CHG(5.5) < ChargerVoltage() || VOLTTODIGIT_CHG(4.5) > ChargerVoltage())
+			{	
+				Charging_Enabled = 0;
 			}
-		
-	}
-	else if (VOLTTODIGIT_CHG(5.5) < ChargerVoltage() || VOLTTODIGIT_CHG(4.5) > ChargerVoltage())
-	{	
-		SystemState = SystemState_ToolOff;
+		}
 	}
 }
 
 void NormalOperation(void)
 {
 	Charging_Control();
-	
-	
-	
-	
-	
 	
 	if (SMSWState() == 0) SystemState = SystemState_ToolOff;
 	if ((BatteryPack_Current_Filtered_Result() > 0 
@@ -382,6 +399,11 @@ void ToolOff(void)
 void Shutdown(void)
 {
 	;
+}
+
+uint8_t KeepAliveConditions(void)
+{
+	return 1;
 }
 
 void HAL_SYSTICK_Callback(void)
