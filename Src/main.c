@@ -77,6 +77,7 @@ static volatile uint16_t ADC_Results[5];
 static volatile uint16_t ADC_Filtered_Results[5];
 uint8_t ChargerCheck_Bit = 0;
 uint8_t Charging_Enabled = 0;
+uint8_t Charging_Error = 0;
 uint16_t Charging_On_Delay = 0;
 uint16_t LED_Green_Blinking = 0;
 uint16_t VBAT_Blanking = 500;
@@ -253,7 +254,7 @@ void Switch_ADC_UpdateTask(void)
 	{
 		Tick_Main = 0;
 
-		if (SystemState != SystemState_Charging)
+		if (Charging_Enabled == 0)
 		{
 			if (VOLTTODIGIT_CHG(0.2) < ChargerVoltage())
 			{
@@ -297,7 +298,8 @@ void SystemUpdateTask(void)
 	
 void WakeUp(void)
 {
-	if (SMSWState() == 1)		
+//	if (SMSWState() == 1)
+	if (1)	
 	{	
 		SHOLD_ON;
 		Mem_Write();
@@ -330,18 +332,24 @@ void Charging_Control(void)
 							else LED_GREEN_OFF;
 						}
 					}
-					else
+					else if (VOLTTODIGIT_BAT(4.15) < Battery_Voltage_Filtered())		// charging is completed
 					{
-//						LED_GREEN_ON;
+						LED_GREEN_ON;
 						BQ_EN_OFF;
 						Charging_Enabled = 0;
 						SystemState = SystemState_ToolOff; 
 					}
+					else		// charging fault
+					{
+						Charging_Error = 1;
+						SystemState = SystemState_ToolOff;
+					}						
 				}
 			}
 			else if (VOLTTODIGIT_CHG(5.5) < ChargerVoltage() || VOLTTODIGIT_CHG(4.5) > ChargerVoltage())
 			{	
 				BQ_EN_OFF;
+				Charging_Error = 1;
 				Charging_Enabled = 0;
 			}
 		}
