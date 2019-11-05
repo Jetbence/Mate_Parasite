@@ -47,7 +47,8 @@
 
 /* Private macros ------------------------------------------------------------*/
 
-//Ez egy teszt
+/* PCBA turn off timer if there is no measurement ongoing for more than this in [ms]. */
+#define PCBA_RESET_TIME		10000 
 
 /* Private types--------------------------------------------------------------*/
 
@@ -75,19 +76,30 @@ UART_HandleTypeDef huart1;
 static SystemState_t SystemState;
 static volatile uint16_t ADC_Results[5];
 static volatile uint16_t ADC_Filtered_Results[5];
+uint32_t PCBA_Reset_Timer = PCBA_RESET_TIME;
+uint8_t PCBA_Timeout = 0;
+uint8_t Measure_Ongoing = 0;
+uint8_t Switch_Enabled = 0;
 uint8_t ChargerCheck_Bit = 0;
 uint8_t Charging_Enabled = 0;
 uint8_t Charging_Error = 0;
 uint16_t Charging_On_Delay = 0;
+uint8_t Charging_Switch_Disabled = 0;
+uint8_t Charging_Bad_Voltage_Blanking = 200;
 uint16_t LED_Green_Blinking = 0;
+uint16_t LED_Red_Blinking = 0;
+uint16_t Battery_Low_Blinking = 500;
+uint16_t Battery_Low_Blinking_Counter = 3;
 uint16_t VBAT_Blanking = 500;
-uint16_t VCHG_Blanking = 0;
+uint16_t VCHG_Blanking = 200;
+uint16_t PCBA_Reset_Blanking = 50;
+uint16_t Charging_Disconnect_Blanking = 50;
 uint32_t Tick_Main = 0;
 uint32_t Charger_Tick = 0;
-uint32_t Charger_Check_Tick = 0;
-uint32_t BQ_Load_Tick = 0;
+uint8_t Measure_Tick = 0;
 uint16_t I2C_Read = 0;
 uint16_t UART_Send = 0;
+uint16_t Battery_Low_Tick = 0;
 LPF32type Battery_Voltage__Filtered;
 LPF32type BatteryPack_Current__Filtered;
 LPF32type BatteryPack_Voltage__Filtered;
@@ -115,6 +127,7 @@ static void MX_NVIC_Init(void);
 static void WakeUp(void);
 static void NormalOperation(void);
 static void Charging_Control(void);
+static void Measure_Control(void);
 static void Shutdown(void);
 static void ToolOff(void);
 static void SystemUpdateTask(void);
@@ -132,8 +145,8 @@ uint16_t Battery_Voltage(void);
 
 uint16_t Battery_Voltage_Filtered(void);
 uint16_t Battery_Voltage_Filtered_Result(void);
-uint16_t BatteryPack_Current_Filtered(void);
-uint16_t BatteryPack_Current_Filtered_Result(void);
+uint32_t BatteryPack_Current_Filtered(void);
+uint32_t BatteryPack_Current_Filtered_Result(void);
 uint16_t BatteryPack_Voltage_Filtered(void);
 uint16_t BatteryPack_Voltage_Filtered_Result(void);
 uint16_t BatteryPack_Temperature_Filtered(void);
@@ -213,10 +226,12 @@ int main(void)
   while (1)
   {
 	
-	Switch_ADC_UpdateTask();
-
+	SystemUpdateTask();
 	  
-  /* USER CODE END WHILE */
+  /* USER CODE END WHILE */		
+
+  /* USER CODE BEGIN 3 */                                    
+
 	switch(SystemState)
 	{
 		case SystemState_WakeUp:			WakeUp();				break;
@@ -224,24 +239,15 @@ int main(void)
 		case SystemState_ToolOff:			ToolOff();				break;
 		case SystemState_Battery_Low:		BatteryLow();			break;
 		default:							Shutdown();				break;
-	}
-		
-
-//	if (SystemState != SystemState_WakeUp)
-//	{
-		SystemUpdateTask();
-//	}
-
-
-  /* USER CODE BEGIN 3 */                                    
-
+	}	  
+	  
   }
   /* USER CODE END 3 */
 
 }
 
 
-void Switch_ADC_UpdateTask(void)
+void SystemUpdateTask(void)
 {
 	SMSW_PeriodicUpdate();
 	LPF32(&Battery_Voltage__Filtered, Battery_Voltage());
@@ -264,6 +270,7 @@ void Switch_ADC_UpdateTask(void)
 					SHOLD_ON;
 					Charging_Enabled = 1;
 					Charging_On_Delay = 500;
+					Charging_Switch_Disabled = 1;
 					SystemState = SystemState_NormalOperation;
 				}
 			}
@@ -287,20 +294,13 @@ void Switch_ADC_UpdateTask(void)
 	}
 }
 
-
-
-void SystemUpdateTask(void)
-{	
-
-	
-}
-
 	
 void WakeUp(void)
 {
-//	if (SMSWState() == 1)
-	if (1)	
+	if (SMSWState() == 1)	
 	{	
+		Switch_Enabled = 1;
+		LED_YELLOW_ON;
 		SHOLD_ON;
 		Mem_Write();
 		HAL_I2C_Mem_Write(&hi2c1, PCF8563_ADDRESS, 0x02, I2C_MEMADD_SIZE_8BIT, &PCF8563_Write.RTCData[0], 8, 50);
@@ -313,6 +313,8 @@ void Charging_Control(void)
 {
 	if (Charger_Tick)
 	{
+		Charger_Tick = 0;
+
 		if (Charging_Enabled == 1)
 		{
 			if (VOLTTODIGIT_CHG(5.5)> ChargerVoltage() && VOLTTODIGIT_CHG(4.5) < ChargerVoltage())
@@ -328,80 +330,133 @@ void Charging_Control(void)
 						else
 						{
 							LED_Green_Blinking = 500;
-							if (HAL_GPIO_ReadPin(LED3_GPIO_Port, LED3_Pin) == 0) LED_GREEN_ON;
-							else LED_GREEN_OFF;
+							LED_GREEN_TOGGLE;
 						}
 					}
 					else if (VOLTTODIGIT_BAT(4.15) < Battery_Voltage_Filtered())		// charging is completed
 					{
 						LED_GREEN_ON;
 						BQ_EN_OFF;
-						Charging_Enabled = 0;
-						SystemState = SystemState_ToolOff; 
+//						Charging_Enabled = 0;
+						Charging_Switch_Disabled = 0;
+//						SystemState = SystemState_ToolOff; 
 					}
 					else		// charging fault
 					{
+						if (LED_Red_Blinking) LED_Red_Blinking--;
+						else
+						{
+							if (HAL_GPIO_ReadPin(LED1_GPIO_Port, LED1_Pin) == 1) 
+							{
+								LED_RED_ON;
+								LED_YELLOW_OFF;
+							}
+							else 
+							{
+								LED_RED_OFF;
+								LED_YELLOW_ON;
+							}
+						}
 						Charging_Error = 1;
-						SystemState = SystemState_ToolOff;
+						Charging_Switch_Disabled = 0;
 					}						
 				}
 			}
 			else if (VOLTTODIGIT_CHG(5.5) < ChargerVoltage() || VOLTTODIGIT_CHG(4.5) > ChargerVoltage())
-			{	
-				BQ_EN_OFF;
-				Charging_Error = 1;
-				Charging_Enabled = 0;
+			{
+				if (VOLTTODIGIT_CHG(0.2) > ChargerVoltage())		// charger is disconnected
+				{
+					if (Charging_Disconnect_Blanking) Charging_Disconnect_Blanking--;
+					else
+					{
+						Charging_Disconnect_Blanking = 50;
+						BQ_EN_OFF;
+						LED_RED_OFF;
+						LED_GREEN_OFF;	
+						Charging_Enabled = 0;
+					}
+				}
+				else
+				{
+					if (Charging_Bad_Voltage_Blanking) Charging_Bad_Voltage_Blanking--;
+					else
+					{	
+						BQ_EN_OFF;
+						LED_RED_OFF;
+						LED_YELLOW_OFF;
+						LED_GREEN_OFF;
+						Charging_Error = 1;
+						Charging_Enabled = 0;
+					}		
+				}				
 			}
 		}
 	}
 }
 
-void NormalOperation(void)
+void Measure_Control(void)
 {
-	Charging_Control();
-//	Measure_Control();
-
-	if (SMSWState() == 0) SystemState = SystemState_ToolOff;
-	if ((BatteryPack_Current_Filtered_Result() > 0 
-		|| BatteryPack_Voltage_Filtered_Result() > 0)  
-		&& VOLTTODIGIT_CHG(5.5)> ChargerVoltage() 
-		&& VOLTTODIGIT_CHG(4.5) < ChargerVoltage())
+	if (Measure_Tick)
 	{
-		BQ_EN_ON;
-		HAL_Delay(500);
-		if(!BQCHG)
+		Measure_Tick = 0;
+
+		if (BatteryPack_Current_Filtered_Result() > 250 && BatteryPack_Temperature_Filtered_Result() > 100)		// if > 500mA and temp is > 100 AD
 		{
-			LED_GREEN_TOGGLE;
-			HAL_Delay(500);
+			if (PCBA_Reset_Blanking) PCBA_Reset_Blanking--;
+			else
+			{
+				PCBA_Reset_Timer = PCBA_RESET_TIME;
+				Measure_Ongoing = 1;
+			}
 		}
-		else
+		else 
 		{
-			BQ_EN_OFF;
+			if (PCBA_Reset_Timer) PCBA_Reset_Timer--;
+			else PCBA_Timeout = 1;
+			PCBA_Reset_Blanking = 50;
+			Measure_Ongoing = 0;
 		}
 	}
+}
 
-	I2C_RTC_Read();
-	UART_OPENLOG_Send();
+void NormalOperation(void)
+{	
 	Battery_Voltage_Filtered_Result();
 	BatteryPack_Current_Filtered_Result();
 	BatteryPack_Voltage_Filtered_Result();
 	BatteryPack_Temperature_Filtered_Result();
 	ChargerVoltage_Filtered_Result();
+
+	Charging_Control();
+	Measure_Control();
+
+	if((Charging_Switch_Disabled == 0) && (SMSWState() == 0)) SystemState = SystemState_ToolOff;
+
+	I2C_RTC_Read();
+	UART_OPENLOG_Send();
 }
 
 void BatteryLow(void)
 {
 	LED_GREEN_OFF;
 	LED_YELLOW_OFF;
-	if(VOLTTODIGIT_BAT(BATTERY_LOW_VOLTAGE))
+	
+	if (Battery_Low_Tick)
 	{
-		SHOLD_OFF;
-		LED_RED_TOGGLE;
-		HAL_Delay(500);
-	}
-	else
-	{
-		SystemState = SystemState_WakeUp;
+		Battery_Low_Tick = 0;
+
+		if(Battery_Low_Blinking) Battery_Low_Blinking--;
+		else
+		{
+			Battery_Low_Blinking = 500;
+			if (HAL_GPIO_ReadPin(LED1_GPIO_Port, LED1_Pin) == 1) LED_RED_ON;
+			else
+			{
+				LED_RED_OFF;
+				if (--Battery_Low_Blinking_Counter);
+				else SystemState = SystemState_ToolOff;
+			}
+		}
 	}
 }
 
@@ -411,8 +466,8 @@ void ToolOff(void)
 	LED_RED_OFF;
 	LED_GREEN_OFF;
 	ADC_V_EN_OFF;
-	SHOLD_OFF;
 	BQ_EN_OFF;
+	SHOLD_OFF;
 	while(1);
 }
 
@@ -423,7 +478,12 @@ void Shutdown(void)
 
 uint8_t KeepAliveConditions(void)
 {
-	return 1;
+	if (Charging_Error == 1 ||
+		(Measure_Ongoing == 0 && Charging_Enabled == 0 && Switch_Enabled == 0) ||
+		 (PCBA_Timeout == 1 && Charging_Enabled == 0))
+		
+	return 0;
+	else return 1;
 }
 
 void HAL_SYSTICK_Callback(void)
@@ -433,8 +493,8 @@ void HAL_SYSTICK_Callback(void)
 	UART_Send++;
 	Tick_Main++;
 	Charger_Tick++;
-	Charger_Check_Tick++;
-	BQ_Load_Tick++;
+	Battery_Low_Tick++;
+	Measure_Tick++;
 }
 
 void I2C_RTC_Read(void)
@@ -783,14 +843,14 @@ uint16_t Battery_Voltage_Filtered(void)
 }
 
 
-uint16_t BatteryPack_Current_Filtered(void)
+uint32_t BatteryPack_Current_Filtered(void)
 {
 	return BatteryPack_Current__Filtered.X;
 }
 
-uint16_t BatteryPack_Current_Filtered_Result(void)
+uint32_t BatteryPack_Current_Filtered_Result(void)
 {
-	uint16_t BatteryPack_Current_Result = ((((((BatteryPack_Current_Filtered()*3300)>>12)-770))*5000))>>8; //mA
+	uint64_t BatteryPack_Current_Result = (((((BatteryPack_Current_Filtered()*3300)>>12)-770))*(5000*1570))>>18; //mA
 	return (ADC_Filtered_Results[0] = BatteryPack_Current_Result);
 }
 
@@ -804,14 +864,14 @@ uint16_t BatteryPack_Voltage_Filtered_Result(void)
 	return (ADC_Filtered_Results[2] = BatteryPack_Voltage_Result);
 }
 
-uint16_t BatteryPack_Temperatue_Filtered(void)
+uint16_t BatteryPack_Temperature_Filtered(void)
 {
 	return BatteryPack_Temperature__Filtered.X;
 }
 
 uint16_t BatteryPack_Temperature_Filtered_Result(void)
 {
-	uint16_t BatteryPack_Temperature_Result = ((BatteryPack_Temperatue_Filtered()*3300)>>12); //mV
+	uint16_t BatteryPack_Temperature_Result = ((BatteryPack_Temperature_Filtered()*3300)>>12); //mV
 	return (ADC_Filtered_Results[3] = BatteryPack_Temperature_Result);
 }
 
