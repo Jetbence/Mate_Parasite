@@ -142,6 +142,24 @@
 #define LED_GREEN_ON		LED3_GPIO_Port->BRR  = LED3_Pin		//	set pin to "1" 
 #define LED_GREEN_OFF		LED3_GPIO_Port->BSRR = LED3_Pin		//  reset pin to "0"
 
+uint16_t BatteryPack_Current(void);
+uint16_t ChargerVoltage(void);
+uint16_t BatteryPack_Voltage(void);
+uint16_t BatteryPack_Temperature(void);
+uint16_t Battery_Voltage(void);
+
+uint16_t Battery_Voltage_Filtered(void);
+uint16_t Battery_Voltage_Filtered_Result(void);
+uint32_t BatteryPack_Current_Filtered(void);
+uint32_t BatteryPack_Current_Filtered_Result(void);
+uint16_t BatteryPack_Voltage_Filtered(void);
+uint16_t BatteryPack_Voltage_Filtered_Result(void);
+uint16_t BatteryPack_Temperature_Filtered(void);
+uint16_t BatteryPack_Temperature_Filtered_Result(void);
+uint16_t ChargerVoltage_Filtered(void);
+uint16_t ChargerVoltage_Filtered_Result(void);
+uint8_t KeepAliveConditions(void);
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
