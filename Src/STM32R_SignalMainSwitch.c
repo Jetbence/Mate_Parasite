@@ -4,6 +4,7 @@
 #include "main.h"
 #include "stm32f0xx_hal.h"
 #include "STM32R_SignalMainSwitch.h"
+#include "ChargeControl.h"
 
 /* Private macros ------------------------------------------------------------*/
 
@@ -17,6 +18,8 @@ static uint8_t SMSW_SwitchOn_Tick = 0;
 uint16_t SMSW_SwitchOn_Counter = 3000;
 uint16_t SMSW_IdleOff_Counter = 10000;
 uint16_t SMSW_SwitchOff_Counter = 3000;
+
+extern Charging_t Charging;
 
 typedef enum
 {
@@ -60,24 +63,20 @@ void SMSW_PeriodicUpdate(void)
 				{
 					if (SMSW_SwitchOn_Counter) SMSW_SwitchOn_Counter--;
 					else SMSWState_ = SMSWState_Pressed;
-				}			
+				}
+
+				if (Charging.Enabled == 1)
+				{
+					SMSWState_ = SMSWState_Pressed;
+				}
 			break;
 			
 			case SMSWState_Released:
-				if (SwitchState() == 1)
+				if (SwitchState() == 1 && Charging.Enabled == 0)
 				{
 					if (SMSW_SwitchOff_Counter) SMSW_SwitchOff_Counter--;
 					else SMSWState_ = SMSWState_RePressed;
-					SMSW_IdleOff_Counter = 10000;
 				}
-#if 0
-				else
-				{
-					if (SMSW_IdleOff_Counter) SMSW_IdleOff_Counter--;
-					else SMSWState_ = SMSWState_RePressed;
-					SMSW_SwitchOff_Counter = 3000;
-				}
-#endif
 			break;
 			
 			case SMSWState_Pressed:

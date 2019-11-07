@@ -49,7 +49,7 @@
 /* Private macros ------------------------------------------------------------*/
 
 /* PCBA turn off timer if there is no measurement ongoing for more than this in [ms]. */
-#define PCBA_RESET_TIME		10000 
+#define PCBA_RESET_TIME		120000 
 
 /* Private types--------------------------------------------------------------*/
 
@@ -82,7 +82,7 @@ uint32_t PCBA_Reset_Timer = PCBA_RESET_TIME;
 uint8_t PCBA_Timeout = 0;
 uint8_t Measure_Ongoing = 0;
 uint8_t Switch_Enabled = 0;
-uint8_t Switch_Disabled = 0;
+uint8_t Switch = 0;
 uint16_t LED_Green_Blinking = 0;
 uint16_t LED_Red_Blinking = 0;
 uint16_t Battery_Low_Blinking = 500;
@@ -248,7 +248,7 @@ void SystemUpdateTask(void)
 					SHOLD_ON;
 					Charging.Enabled = 1;
 					Charging.On_Delay = 500;
-					Switch_Disabled = 1;
+					Switch = 1;
 					SystemState = SystemState_NormalOperation;
 				}
 			}
@@ -277,7 +277,6 @@ void WakeUp(void)
 {
 	if (SMSWState() == 1)	
 	{	
-		Switch_Enabled = 1;
 		LED_YELLOW_ON;
 		SHOLD_ON;
 		Mem_Write();
@@ -292,14 +291,14 @@ void Measure_Control(void)
 	{
 		Measure_Tick = 0;
 
-		if (BatteryPack_Current_Filtered_Result() > 250 && BatteryPack_Temperature_Filtered_Result() > 100)		// if > 500mA and temp is > 100 AD
+		if (BatteryPack_Current_Filtered_Result() > 250 && BatteryPack_Temperature_Filtered_Result() > 100 && BatteryPack_Voltage_Filtered_Result() > 12000)	// if > 500mA and temp is > 100 AD
 		{
 			if (PCBA_Reset_Blanking) PCBA_Reset_Blanking--;
 			else
 			{
 				LED_YELLOW_ON;
 				PCBA_Reset_Timer = PCBA_RESET_TIME;
-				Measure_Ongoing = 1;
+				PCBA_Timeout = 0;
 			}
 		}
 		else 
@@ -311,7 +310,6 @@ void Measure_Control(void)
 				PCBA_Timeout = 1;
 			}
 			PCBA_Reset_Blanking = 50;
-			Measure_Ongoing = 0;
 		}
 	}
 }
@@ -327,7 +325,7 @@ void NormalOperation(void)
 	Charging_Control();
 	Measure_Control();
 
-	if((Switch_Disabled == 0) && (SMSWState() == 0)) SystemState = SystemState_ToolOff;
+	if((Switch == 0) && (SMSWState() == 0)) SystemState = SystemState_ToolOff;
 
 	I2C_RTC_Read();
 	UART_OPENLOG_Send();
@@ -375,9 +373,7 @@ void Shutdown(void)
 
 uint8_t KeepAliveConditions(void)
 {
-	if (Charging.Error == 1 ||
-		(Measure_Ongoing == 0 && Charging.Enabled == 0 && Switch_Enabled == 0) ||
-		 (PCBA_Timeout == 1 && Charging.Enabled == 0))
+	if (PCBA_Timeout == 1 && Charging.Enabled == 0)
 		
 	return 0;
 	else return 1;
