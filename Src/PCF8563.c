@@ -4,14 +4,15 @@
 #include "PCF8563.h"
 
 char RTC_printf[50];
+char bcd2bin(char bcd_value);
+
+int8_t bin2bcd(int8_t value);
 
 struct MyStruct StringToData;
-extern PCF8563_Write_Buffer_t PCF8563_Write;
 
+extern PCF8563_Write_Buffer_t PCF8563_Write;
 extern PCF8563_Raw_Buffer_t PCF8563;
 extern PCF8563_BCD_Buffer_t PCF8563_BCD;
-int8_t bin2bcd(int8_t value);
-char bcd2bin(char bcd_value);
 
 void Mem_Write(void)
 {
@@ -65,13 +66,6 @@ void Mem_Read(void)
 		PCF8563_BCD.BCD_Data.Hours = 			bcd2bin(PCF8563.RTCData[2] & 0x3F);
 		PCF8563_BCD.BCD_Data.Minutes = 			bcd2bin(PCF8563.RTCData[1]);	
 		PCF8563_BCD.BCD_Data.VL_seconds = 		bcd2bin(PCF8563.RTCData[0]);
-		sprintf(RTC_printf, " %d. %0.2d. %0.2d. %0.2d:%0.2d:%0.2d",\
-							PCF8563_BCD.BCD_Data.Years,\
-							PCF8563_BCD.BCD_Data.Century_months,\
-							PCF8563_BCD.BCD_Data.Days,\
-							PCF8563_BCD.BCD_Data.Hours,\
-							PCF8563_BCD.BCD_Data.Minutes,\
-							PCF8563_BCD.BCD_Data.VL_seconds);
 }
 
 int8_t bin2bcd(int8_t value)
@@ -82,8 +76,8 @@ retval = 0;
 
 while(1)
   {
-   // Get the tens digit by doing multiple subtraction
-   // of 10 from the binary value.
+/* Get the tens digit by doing multiple subtraction
+	of 10 from the binary value. */
    if(value >= 10)
      {
       value -= 10;
@@ -105,8 +99,8 @@ char temp;
 
 temp = bcd_value;
 
-// Shifting the upper digit right by 1 is
-// the same as multiplying it by 8.
+/* Shifting the upper digit right by 1 is
+	the same as multiplying it by 8. */
 temp >>= 1;
 
 // Isolate the bits for the upper digit.
@@ -116,3 +110,4 @@ temp &= 0x78;
 return(temp + (temp >> 2) + (bcd_value & 0x0f));
 
 }
+

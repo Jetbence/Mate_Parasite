@@ -75,72 +75,75 @@
  #define ADC_FILTERED_RESULT_POS_TEMP		3
  #define ADC_FILTERED_RESULT_POS_BAT		4
 
- #define ADC_REFERENCEVOLTAGE 		(3.3)
- #define ADC_RESOLUTION 			(12)
- #define CHG_ADC_STEPS 				PWR2(ADC_RESOLUTION)
-
- #define BATTERY_LOW_VOLTAGE			3.0 	// eddig merülhet az akksi
-	 
+ #define ADC_REFERENCEVOLTAGE 				(3.3)
+ #define ADC_RESOLUTION 					(12)
+ #define CHG_ADC_STEPS 						PWR2(ADC_RESOLUTION)
+		
+ #define BATTERY_LOW_VOLTAGE				3.0 					// the battery can be discharged to this voltage
+			
 /**		Gain of measurement analog path.
- *		[V/V] */
- #define  ADC_CUR_GAIN				(1+(249/1.5))			//167
- #define  ADC_CHG_GAIN				(10.0/(10.0+10.0))		//0.5
- #define  ADC_VOLT_GAIN				(10.0/(62.0+10.0))		//0.1388
- #define  ADC_TEMP_GAIN				1
- #define  ADC_BAT_GAIN				(22.0/(9.1+22.0))		//0.7073
- #define  INV_ADC_BAT_GAIN			((22+9.1)/22)
- #define  INV_ADC_VOLT_GAIN			((62+10)/10)
+ *		[V/V] */		
+ #define  ADC_CUR_GAIN						(1+(249/1.5))			//167
+ #define  ADC_CHG_GAIN						(10.0/(10.0+10.0))		//0.5
+ #define  ADC_VOLT_GAIN						(10.0/(62.0+10.0))		//0.1388
+ #define  ADC_TEMP_GAIN						1
+ #define  ADC_BAT_GAIN						(22.0/(9.1+22.0))		//0.7073
+ #define  INV_ADC_BAT_GAIN					((22+9.1)/22)			//1.4136
+ #define  INV_ADC_VOLT_GAIN					((62+10)/10)			//7.2
 
-#define VOLTTODIGIT_CUR(V)						(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_CUR_GAIN)))
-#define VOLTTODIGIT_CHG(V)						(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_CHG_GAIN)))
-#define VOLTTODIGIT_VOLT(V)						(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_VOLT_GAIN)))
-#define VOLTTODIGIT_TEMP(V)						(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_TEMP_GAIN)))
-#define VOLTTODIGIT_BAT(V)						(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_BAT_GAIN)))
+#define VOLTTODIGIT_CUR(V)					(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_CUR_GAIN)))
+#define VOLTTODIGIT_CHG(V)					(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_CHG_GAIN)))
+#define VOLTTODIGIT_VOLT(V)					(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_VOLT_GAIN)))
+#define VOLTTODIGIT_TEMP(V)					(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_TEMP_GAIN)))
+#define VOLTTODIGIT_BAT(V)					(int32_t)((float)(V)/(ADC_REFERENCEVOLTAGE/(CHG_ADC_STEPS*ADC_BAT_GAIN)))
 
 
-#define SHOLD_Pin 				GPIO_PIN_5
-#define SHOLD_GPIO_Port 		GPIOB
-
-#define LED1_Pin 				GPIO_PIN_11
-#define LED1_GPIO_Port 			GPIOA
-#define LED2_Pin 				GPIO_PIN_12
-#define LED2_GPIO_Port 			GPIOA
-#define LED3_Pin 				GPIO_PIN_15
-#define LED3_GPIO_Port 			GPIOA
-#define BQ_EN_Pin				GPIO_PIN_4
-#define BQ_EN_GPIO_Port			GPIOA
-#define BQCHG_Pin				GPIO_PIN_3
-#define BQCHG_GPIO_Port			GPIOA
-#define SW_Pin					GPIO_PIN_1
-#define SW_GPIO_Port			GPIOB
-#define ADC_V_EN_Pin			GPIO_PIN_0
-#define ADC_V_EN_GPIO_Port		GPIOB
+#define SHOLD_Pin 							GPIO_PIN_5
+#define SHOLD_GPIO_Port 					GPIOB
+			
+#define LED1_Pin 							GPIO_PIN_11
+#define LED1_GPIO_Port 						GPIOA
+#define LED2_Pin 							GPIO_PIN_12
+#define LED2_GPIO_Port 						GPIOA
+#define LED3_Pin 							GPIO_PIN_15
+#define LED3_GPIO_Port 						GPIOA
+			
+#define BQ_EN_Pin							GPIO_PIN_4
+#define BQ_EN_GPIO_Port						GPIOA
+#define BQCHG_Pin							GPIO_PIN_3
+#define BQCHG_GPIO_Port						GPIOA
+			
+#define SW_Pin								GPIO_PIN_1
+#define SW_GPIO_Port						GPIOB
+			
+#define ADC_V_EN_Pin						GPIO_PIN_0
+#define ADC_V_EN_GPIO_Port					GPIOB
 
 // PB5 (out)  -> uC selfhold
-#define SHOLD_ON			SHOLD_GPIO_Port->BSRR = SHOLD_Pin
-#define SHOLD_OFF			SHOLD_GPIO_Port->BRR  = SHOLD_Pin
-
-#define BQ_EN_ON			BQ_EN_GPIO_Port->BRR = BQ_EN_Pin
-#define BQ_EN_OFF			BQ_EN_GPIO_Port->BSRR= BQ_EN_Pin
-
-#define BQCHG 				HAL_GPIO_ReadPin(BQCHG_GPIO_Port, BQCHG_Pin)
-#define SW_READ	  			HAL_GPIO_ReadPin(SW_GPIO_Port, SW_Pin)
-
-#define ADC_V_EN_ON			ADC_V_EN_GPIO_Port->BSRR = ADC_V_EN_Pin
-#define ADC_V_EN_OFF		ADC_V_EN_GPIO_Port->BRR  = ADC_V_EN_Pin
-		
-// PA11 (out)  -> LED1
-#define LED_RED_TOGGLE		LED1_GPIO_Port->ODR  ^= LED1_Pin
-#define LED_RED_ON			LED1_GPIO_Port->BRR  = LED1_Pin		//	set pin to "1" 
-#define LED_RED_OFF			LED1_GPIO_Port->BSRR = LED1_Pin		//  reset pin to "0"
-// PA12 (out)  -> LED2
-#define LED_YELLOW_TOGGLE	LED2_GPIO_Port->ODR  ^= LED2_Pin
-#define LED_YELLOW_ON		LED2_GPIO_Port->BRR  = LED2_Pin		//	set pin to "1" 
-#define LED_YELLOW_OFF		LED2_GPIO_Port->BSRR = LED2_Pin		//  reset pin to "0"
-// PA15 (out)  -> LED3
-#define LED_GREEN_TOGGLE	LED3_GPIO_Port->ODR  ^= LED3_Pin
-#define LED_GREEN_ON		LED3_GPIO_Port->BRR  = LED3_Pin		//	set pin to "1" 
-#define LED_GREEN_OFF		LED3_GPIO_Port->BSRR = LED3_Pin		//  reset pin to "0"
+#define SHOLD_ON							SHOLD_GPIO_Port->BSRR = SHOLD_Pin
+#define SHOLD_OFF							SHOLD_GPIO_Port->BRR  = SHOLD_Pin
+				
+#define BQ_EN_ON							BQ_EN_GPIO_Port->BRR = BQ_EN_Pin
+#define BQ_EN_OFF							BQ_EN_GPIO_Port->BSRR= BQ_EN_Pin
+				
+#define BQCHG 								HAL_GPIO_ReadPin(BQCHG_GPIO_Port, BQCHG_Pin)
+#define SW_READ	  							HAL_GPIO_ReadPin(SW_GPIO_Port, SW_Pin)
+				
+#define ADC_V_EN_ON							ADC_V_EN_GPIO_Port->BSRR = ADC_V_EN_Pin
+#define ADC_V_EN_OFF						ADC_V_EN_GPIO_Port->BRR  = ADC_V_EN_Pin
+						
+// PA11 (out)  -> LED1				
+#define LED_RED_TOGGLE						LED1_GPIO_Port->ODR  ^= LED1_Pin
+#define LED_RED_ON							LED1_GPIO_Port->BRR  = LED1_Pin		//	set pin to "1" 
+#define LED_RED_OFF							LED1_GPIO_Port->BSRR = LED1_Pin		//  reset pin to "0"
+// PA12 (out)  -> LED2				
+#define LED_YELLOW_TOGGLE					LED2_GPIO_Port->ODR  ^= LED2_Pin
+#define LED_YELLOW_ON						LED2_GPIO_Port->BRR  = LED2_Pin		//	set pin to "1" 
+#define LED_YELLOW_OFF						LED2_GPIO_Port->BSRR = LED2_Pin		//  reset pin to "0"
+// PA15 (out)  -> LED3				
+#define LED_GREEN_TOGGLE					LED3_GPIO_Port->ODR  ^= LED3_Pin
+#define LED_GREEN_ON						LED3_GPIO_Port->BRR  = LED3_Pin		//	set pin to "1" 
+#define LED_GREEN_OFF						LED3_GPIO_Port->BSRR = LED3_Pin		//  reset pin to "0"
 
 uint16_t BatteryPack_Current(void);
 uint16_t ChargerVoltage(void);

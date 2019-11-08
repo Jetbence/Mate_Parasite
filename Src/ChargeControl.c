@@ -1,4 +1,3 @@
-
 #include "ChargeControl.h"
 
 extern uint16_t LED_Green_Blinking;
@@ -54,8 +53,6 @@ void Charging_Control(void)
 						if (Charging.Disconnect_Blanking) Charging.Disconnect_Blanking--;
 						else
 						{	
-//							Charging.Disconnect_Blanking = 50;
-
 							if (LED_Red_Blinking) LED_Red_Blinking--;
 							else
 							{
@@ -97,12 +94,9 @@ void Charging_Control(void)
 							else LED_RED_OFF;
 						}
 						BQ_EN_OFF;
-//						Charging.Enabled = 0;
 					}		
 				}				
 			}
 		}
 	}
 }
-
-

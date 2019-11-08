@@ -397,16 +397,6 @@
               <FilePath>../Src/stm32f0xx_hal_msp.c</FilePath>
             </File>
             <File>
-              <FileName>ChargeControl.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\ChargeControl.c</FilePath>
-            </File>
-            <File>
-              <FileName>ChargeControl.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\Inc\ChargeControl.h</FilePath>
-            </File>
-            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/main.c</FilePath>
@@ -440,6 +430,16 @@
               <FileName>LPF.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\Inc\LPF.h</FilePath>
+            </File>
+            <File>
+              <FileName>ChargeControl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ChargeControl.c</FilePath>
+            </File>
+            <File>
+              <FileName>ChargeControl.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Inc\ChargeControl.h</FilePath>
             </File>
           </Files>
         </Group>

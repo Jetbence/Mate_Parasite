@@ -291,7 +291,9 @@ void Measure_Control(void)
 	{
 		Measure_Tick = 0;
 
-		if (BatteryPack_Current_Filtered_Result() > 250 && BatteryPack_Temperature_Filtered_Result() > 100 && BatteryPack_Voltage_Filtered_Result() > 12000)	// if > 500mA and temp is > 100 AD
+		if (BatteryPack_Current_Filtered_Result() > 250 
+			&& BatteryPack_Temperature_Filtered_Result() > 100 
+		&& BatteryPack_Voltage_Filtered_Result() > 12000)	// if > 250 mA and temp is > 100 raw AD nad vbat voltage > 12000 mV
 		{
 			if (PCBA_Reset_Blanking) PCBA_Reset_Blanking--;
 			else
@@ -402,7 +404,7 @@ void I2C_RTC_Read(void)
 
 void UART_OPENLOG_Send(void)
 {
-	if (UART_Send > 1000)
+	if (UART_Send > 50)
 	{
 
 	HAL_ADC_Stop_DMA(&hadc);	
@@ -421,6 +423,7 @@ void UART_OPENLOG_Send(void)
 						BatteryPack_Voltage_Filtered_Result(),\
 						BatteryPack_Temperature(),\
 						Battery_Voltage_Filtered_Result()), 50);
+		
 	HAL_ADC_Start_DMA(&hadc, (uint32_t*)ADC_Results, 5);
 		
 	}
