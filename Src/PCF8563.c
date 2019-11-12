@@ -4,9 +4,9 @@
 #include "PCF8563.h"
 
 char RTC_printf[50];
-char bcd2bin(char bcd_value);
+char bcd2dec(char bcd_value);
 
-int8_t bin2bcd(int8_t value);
+int8_t dec2bcd(int8_t value);
 
 struct MyStruct StringToData;
 
@@ -48,27 +48,27 @@ void Mem_Write(void)
 
 			StringToData.VL_seconds = (uint8_t)StringToData.SecCH0*10+StringToData.SecCH1;
 			
-			PCF8563_Write.Write_Data.VL_seconds = bin2bcd(StringToData.VL_seconds);
-			PCF8563_Write.Write_Data.Minutes = bin2bcd(StringToData.Minutes);
-			PCF8563_Write.Write_Data.Hours = bin2bcd(StringToData.Hours);
-			PCF8563_Write.Write_Data.Days = bin2bcd(StringToData.Days);
-			PCF8563_Write.Write_Data.Century_months = bin2bcd(StringToData.Century_months);
-			PCF8563_Write.Write_Data.Years = bin2bcd(StringToData.Years-2000);
+			PCF8563_Write.Write_Data.VL_seconds = dec2bcd(StringToData.VL_seconds);
+			PCF8563_Write.Write_Data.Minutes = dec2bcd(StringToData.Minutes);
+			PCF8563_Write.Write_Data.Hours = dec2bcd(StringToData.Hours);
+			PCF8563_Write.Write_Data.Days = dec2bcd(StringToData.Days);
+			PCF8563_Write.Write_Data.Century_months = dec2bcd(StringToData.Century_months);
+			PCF8563_Write.Write_Data.Years = dec2bcd(StringToData.Years-2000);
 			
 }
 
 void Mem_Read(void)
 {
 
-		PCF8563_BCD.BCD_Data.Years = 			bcd2bin(PCF8563.RTCData[6]+PCF8563.RTCData[7]);
-		PCF8563_BCD.BCD_Data.Century_months = 	bcd2bin(PCF8563.RTCData[5] & 0x1F);
-		PCF8563_BCD.BCD_Data.Days = 			bcd2bin(PCF8563.RTCData[3] & 0x3F);
-		PCF8563_BCD.BCD_Data.Hours = 			bcd2bin(PCF8563.RTCData[2] & 0x3F);
-		PCF8563_BCD.BCD_Data.Minutes = 			bcd2bin(PCF8563.RTCData[1]);	
-		PCF8563_BCD.BCD_Data.VL_seconds = 		bcd2bin(PCF8563.RTCData[0]);
+		PCF8563_BCD.BCD_Data.Years = 			bcd2dec(PCF8563.RTCData[6]+PCF8563.RTCData[7]);
+		PCF8563_BCD.BCD_Data.Century_months = 	bcd2dec(PCF8563.RTCData[5] & 0x1F);
+		PCF8563_BCD.BCD_Data.Days = 			bcd2dec(PCF8563.RTCData[3] & 0x3F);
+		PCF8563_BCD.BCD_Data.Hours = 			bcd2dec(PCF8563.RTCData[2] & 0x3F);
+		PCF8563_BCD.BCD_Data.Minutes = 			bcd2dec(PCF8563.RTCData[1]);	
+		PCF8563_BCD.BCD_Data.VL_seconds = 		bcd2dec(PCF8563.RTCData[0]);
 }
 
-int8_t bin2bcd(int8_t value)
+int8_t dec2bcd(int8_t value)
 {
 char retval;
 
@@ -91,7 +91,7 @@ while(1)
 return(retval);
 }
 
-char bcd2bin(char bcd_value)
+char bcd2dec(char bcd_value)
 {
 char temp;
 
