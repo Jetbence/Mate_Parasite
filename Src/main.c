@@ -293,7 +293,7 @@ void Measure_Control(void)
 
 		if (BatteryPack_Current_Filtered_Result() > 250 
 			&& BatteryPack_Temperature_Filtered_Result() > 100 
-		&& BatteryPack_Voltage_Filtered_Result() > 12000)	// if > 250 mA and temp is > 100 raw AD nad vbat voltage > 12000 mV
+		&& BatteryPack_Voltage_Filtered_Result() > 12000)	// if > 250 mA and temp is > 100 raw AD and vbat voltage > 12000 mV
 		{
 			if (PCBA_Reset_Blanking) PCBA_Reset_Blanking--;
 			else

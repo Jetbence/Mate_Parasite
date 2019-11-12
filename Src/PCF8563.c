@@ -76,14 +76,12 @@ retval = 0;
 
 while(1)
   {
-/* Get the tens digit by doing multiple subtraction
-	of 10 from the binary value. */
    if(value >= 10)
      {
       value -= 10;
       retval += 0x10;
      }
-   else // Get the ones digit by adding the remainder.
+   else 
      {
       retval += value;
       break;
@@ -99,15 +97,7 @@ char temp;
 
 temp = bcd_value;
 
-/* Shifting the upper digit right by 1 is
-	the same as multiplying it by 8. */
-temp >>= 1;
-
-// Isolate the bits for the upper digit.
-temp &= 0x78;
-
-// Now return: (Tens * 8) + (Tens * 2) + Ones
-return(temp + (temp >> 2) + (bcd_value & 0x0f));
-
+return(((temp >> 4)*10) + (bcd_value & 0x0f));
 }
+
 
